@@ -1,0 +1,14 @@
+:root {
+  --brand-cyan:         #00E5FF;
+  --brand-teal:         #00B8D4;
+  --brand-blue:         #2979FF;
+  --brand-deep:         #102A43;
+  --brand-white:        #ffffff;
+  --brand-bg:           #f8fafc;
+  --brand-text:         #0f172a;
+  --brand-muted:        #64748b;
+  --brand-border:       #e2e8f0;
+  --brand-primary:      var(--brand-teal);
+  --brand-primary-hover: var(--brand-blue);
+  --brand-focus:        rgba(0, 184, 212, 0.2);
+}
