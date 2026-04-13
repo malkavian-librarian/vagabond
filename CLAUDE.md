@@ -1,4 +1,4 @@
-# Vagabond Development Guide
+# Vagabond: Anki Card Local Generator Development Guide
 
 ## Build Commands
 - `npm run dev`: Start development server

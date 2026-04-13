@@ -1,4 +1,4 @@
-# Agent Execution Guide: Vagabond
+# Agent Execution Guide: Vagabond: Anki Card Local Generator
 
 ## Core Logic
 - `src/app/page.js`: Orchestrates the sequential generation flow.
