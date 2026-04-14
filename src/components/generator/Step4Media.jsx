@@ -6,6 +6,7 @@ export default function Step4Media({
   generatingProgress, 
   setStep, 
   setGeneratingProgress, 
+  cancelGeneration,
   t, 
   nativeLanguage 
 }) {
@@ -21,11 +22,6 @@ export default function Step4Media({
     }, 4000);
     return () => clearInterval(interval);
   }, [nativeLanguage]);
-
-  const handleCancel = () => {
-    setStep(1);
-    setGeneratingProgress([]);
-  };
 
   return (
     <div className="brand-card">
@@ -52,7 +48,7 @@ export default function Step4Media({
         </div>
       </div>
 
-      <button className="brand-btn btn-ghost" onClick={handleCancel} style={{ marginTop: '3rem', width: '100%' }}>
+      <button className="brand-btn btn-ghost" onClick={cancelGeneration} style={{ marginTop: '3rem', width: '100%' }}>
         {t("btn_cancel")}
       </button>
     </div>

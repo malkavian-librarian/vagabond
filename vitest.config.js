@@ -18,14 +18,15 @@ export default defineConfig({
       include: [
         'src/hooks/**/*.js', 
         'src/app/locales.js', 
-        'src/components/generator/Step1.jsx'
+        'src/components/generator/Step1.jsx',
+        'src/app/api/compile-apkg/route.js'
       ],
       exclude: ['node_modules/', '.next/'],
       thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 40,
-        statements: 80
+        lines: 90,
+        functions: 90,
+        branches: 80,
+        statements: 90
       }
     },
     alias: {

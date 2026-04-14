@@ -44,62 +44,103 @@ async function generateTTS(text, lang, reqUrl) {
   }
 }
 
-async function generateImage(card, targetLanguage, topic, reqUrl) {
+async function enhancePrompt(card, targetLanguage, topic, llmModel, reqUrl) {
+  if (!process.env.OPENROUTER_API_KEY || !llmModel) return null;
+  const instruction = `You are a prompt enhancer. Your task is to output ONLY a highly descriptive image generation prompt.\nBase request: Generate an image for an ANKI card to learn ${targetLanguage}. Generate an image for the word "${card.target}" in the following context: ${card.subtopic || ""} - ${topic}.\nRules for the enhanced prompt: Do not use text on the image, just the picture. Make it funny and memorable. Use the pirate theme if possible (our application is called Vagabond). Describe the visual scene in detail.\nOutput ONLY the final descriptive string.`;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: llmModel,
+          messages: [{ role: "user", content: instruction }]
+        })
+      });
+      if (res.status === 429) {
+        await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 2000));
+        continue;
+      }
+      const data = await res.json();
+      return data?.choices?.[0]?.message?.content || null;
+    } catch (e) {
+      console.error("Enhance Prompt Error:", e);
+      if (attempt === 2) return null;
+    }
+  }
+  return null;
+}
+
+async function generateImage(card, targetLanguage, topic, model, reqUrl) {
   if (!process.env.OPENROUTER_API_KEY) return null;
   
-  const prompt = `You are asked to generate an image for an ANKI card to learn ${targetLanguage}. Generate an image for ${card.target} in the following context: ${card.subtopic || ""} - ${topic}.`;
+  const basePrompt = `You are asked to generate an image for an ANKI card to learn ${targetLanguage}. Generate an image for ${card.target} in the following context: ${card.subtopic || ""} - ${topic}.`;
+  
+  const enhancedPrompt = model ? await enhancePrompt(card, targetLanguage, topic, model, reqUrl) : null;
+  const prompt = enhancedPrompt || basePrompt;
 
-  try {
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        messages: [{ role: "user", content: prompt }],
-        modalities: ["image", "text"],
-        image_config: { aspect_ratio: "1:1" }
-      })
-    });
-    
-    const data = await res.json();
-
-    if (data.error) {
-       await fetch(new URL("/api/errors", reqUrl), {
-         method: "POST",
-         headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({ model: "google/gemini-2.5-flash-image", error_code: data.error.code, message: data.error.message, context: "Image Generation" })
-       }).catch(() => {});
-       return null;
-    }
-
-    const message = data?.choices?.[0]?.message;
-    if (message?.images && message.images.length > 0) {
-      const dataUrl = message.images[0].image_url?.url || message.images[0].url;
-      // dataUrl looks like "data:image/png;base64,iVBORw..."
-      if (dataUrl && dataUrl.includes(";base64,")) {
-        return dataUrl.split(";base64,")[1];
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-image",
+          messages: [{ role: "user", content: prompt }],
+          modalities: ["image", "text"],
+          image_config: { aspect_ratio: "1:1" }
+        })
+      });
+      
+      if (res.status === 429) {
+        await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 2500));
+        continue;
       }
-    }
 
-    // Fallback: check text content for markdown URLs just in case
-    const content = message?.content || "";
-    const urlMatch = content.match(/https?:\/\/[^\s)"]+/);
-    if (urlMatch) {
-      const imgRes = await fetch(urlMatch[0]);
-      if (imgRes.ok) {
-        const arrayBuffer = await imgRes.arrayBuffer();
-        return Buffer.from(arrayBuffer).toString("base64");
+      const data = await res.json();
+
+      if (data.error) {
+         if (attempt === 2) {
+           await fetch(new URL("/api/errors", reqUrl), {
+             method: "POST",
+             headers: { "Content-Type": "application/json" },
+             body: JSON.stringify({ model: "google/gemini-2.5-flash-image", error_code: data.error.code, message: data.error.message, context: "Image Generation" })
+           }).catch(() => {});
+           return null;
+         }
+         continue; // retry if another error and attempts remain
       }
+
+      const message = data?.choices?.[0]?.message;
+      if (message?.images && message.images.length > 0) {
+        const dataUrl = message.images[0].image_url?.url || message.images[0].url;
+        if (dataUrl && dataUrl.includes(";base64,")) {
+          return dataUrl.split(";base64,")[1];
+        }
+      }
+
+      const content = message?.content || "";
+      const urlMatch = content.match(/https?:\/\/[^\s)"]+/);
+      if (urlMatch) {
+        const imgRes = await fetch(urlMatch[0]);
+        if (imgRes.ok) {
+          const arrayBuffer = await imgRes.arrayBuffer();
+          return Buffer.from(arrayBuffer).toString("base64");
+        }
+      }
+      
+      return null;
+    } catch (e) {
+      console.error("OpenRouter Image Error:", e);
+      if (attempt === 2) return null;
     }
-    
-    console.warn("No valid image output found:", data);
-    return null;
-  } catch (e) {
-    console.error("OpenRouter Image Error:", e);
-    return null;
   }
 }
 
@@ -115,7 +156,7 @@ export async function OPTIONS() {
 
 export async function POST(req) {
   try {
-    const { cards, targetLanguage, topic } = await req.json();
+    const { cards, targetLanguage, topic, model } = await req.json();
 
     if (!cards || !Array.isArray(cards) || !targetLanguage) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400, headers: corsHeaders });
@@ -125,7 +166,7 @@ export async function POST(req) {
       cards.map(async (card) => {
         const [audio, image] = await Promise.all([
           generateTTS(card.target, targetLanguage, req.url),
-          generateImage(card, targetLanguage, topic, req.url)
+          generateImage(card, targetLanguage, topic, model, req.url)
         ]);
         return {
           ...card,

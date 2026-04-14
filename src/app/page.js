@@ -139,6 +139,8 @@ export default function Page() {
     loading: hookLoading,
     generationStats,
     generatingProgress,
+    setGeneratingProgress,
+    cancelGeneration,
     handleGenerateTopics,
     handleGenerateWords,
     handleGenerateMediaAndCompile
@@ -206,10 +208,10 @@ export default function Page() {
         
         {activeTab === 'generator' && (
           <>
-            {step === 1 && <Step1 formData={formData} setFormData={setFormData} handleGenerateTopics={handleGenerateTopics} loading={loading || hookLoading} t={t} />}
-            {step === 2 && <Step2 formData={formData} availableSubtopics={availableSubtopics} selectedSubtopics={selectedSubtopics} toggleSubtopic={toggleSubtopic} handleGenerateWords={handleGenerateWords} setFormData={setFormData} setAvailableSubtopics={setAvailableSubtopics} loading={loading || hookLoading} generationStats={generationStats} t={t} />}
+            {step === 1 && <Step1 formData={formData} setFormData={setFormData} handleGenerateTopics={handleGenerateTopics} loading={loading || hookLoading} cancelGeneration={cancelGeneration} t={t} />}
+            {step === 2 && <Step2 formData={formData} availableSubtopics={availableSubtopics} selectedSubtopics={selectedSubtopics} toggleSubtopic={toggleSubtopic} handleGenerateWords={handleGenerateWords} setFormData={setFormData} setAvailableSubtopics={setAvailableSubtopics} loading={loading || hookLoading} cancelGeneration={cancelGeneration} generationStats={generationStats} t={t} />}
             {step === 3 && <Step3Review generatedWords={generatedWords} setGeneratedWords={setGeneratedWords} handleGenerateMediaAndCompile={handleGenerateMediaAndCompile} t={t} />}
-            {step === 4 && <Step4Media generatingProgress={generatingProgress} setStep={setStep} setGeneratingProgress={setGeneratingProgress} t={t} nativeLanguage={formData.nativeLanguage} />}
+            {step === 4 && <Step4Media generatingProgress={generatingProgress} setStep={setStep} setGeneratingProgress={setGeneratingProgress} cancelGeneration={cancelGeneration} t={t} nativeLanguage={formData.nativeLanguage} />}
             {step === 5 && <Step5Download generationStats={generationStats} downloadUrl={downloadUrl} formData={formData} setStep={setStep} setDownloadUrl={setDownloadUrl} t={t} />}
           </>
         )}

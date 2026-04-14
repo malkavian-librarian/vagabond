@@ -39,10 +39,36 @@ describe('Generator Suite End-to-End Visual Loading', () => {
     const formInput = screen.getByPlaceholderText('placeholder_custom_subtopic');
     fireEvent.change(formInput, { target: { value: 'Biology' } });
     
+    // Add Custom Subtopic Submit
+    const addBtn = screen.getByText('+ btn_add');
+    fireEvent.click(addBtn); // Should execute setAvailableSubtopics and toggle
+    
     // Simulate Form Submission
     const submitBtn = screen.getByRole('button', { name: 'btn_generate_words' });
     fireEvent.click(submitBtn);
     expect(mockHandleGenerate).toHaveBeenCalled();
+  });
+
+  it('Renders Step2 cancel button when loading is true', () => {
+    const mockCancel = vi.fn();
+    render(
+      <Step2 
+        formData={{ wordsPerSubtopic: 10, topic: 'Science' }} 
+        availableSubtopics={[]} 
+        selectedSubtopics={[]} 
+        toggleSubtopic={vi.fn()} 
+        handleGenerateWords={vi.fn()} 
+        setFormData={vi.fn()} 
+        setAvailableSubtopics={vi.fn()} 
+        cancelGeneration={mockCancel}
+        loading={true} 
+        generationStats={{ cards: 5 }} 
+        t={mockT} 
+      />
+    );
+    const cancelBtn = screen.getByText('btn_cancel');
+    fireEvent.click(cancelBtn);
+    expect(mockCancel).toHaveBeenCalled();
   });
 
   it('Renders Step4Media loading stats correctly', () => {
@@ -57,6 +83,23 @@ describe('Generator Suite End-to-End Visual Loading', () => {
       />
     );
     expect(screen.getByText('3 / 10 Words Processed')).toBeInTheDocument();
+  });
+
+  it('Renders Step4Media cancel button logic', () => {
+    const mockCancel = vi.fn();
+    render(
+      <Step4Media 
+        generatingProgress={{ processedWords: 0, totalWords: 0 }} 
+        setStep={vi.fn()} 
+        setGeneratingProgress={vi.fn()} 
+        cancelGeneration={mockCancel}
+        t={mockT} 
+        nativeLanguage="English" 
+      />
+    );
+    const cancelBtn = screen.getByText('btn_cancel');
+    fireEvent.click(cancelBtn);
+    expect(mockCancel).toHaveBeenCalled();
   });
 
   it('Renders Step5Download statistics', () => {

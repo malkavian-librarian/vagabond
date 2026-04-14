@@ -9,13 +9,12 @@ export const EUROPEAN_LANGUAGES = [
   "Slovak", "Slovenian", "Spanish", "Swedish", "Ukrainian", "Welsh"
 ];
 
-export default function Step1({ formData, setFormData, handleGenerateTopics, loading, t }) {
+export default function Step1({ formData, setFormData, handleGenerateTopics, loading, cancelGeneration, t }) {
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value } = e.target;
     setFormData(prev => ({ 
       ...prev, 
-      [name]: type === 'checkbox' ? checked : 
-              (name === 'subtopicCount' || name === 'wordsPerSubtopic') ? Number(value) : value 
+      [name]: name === 'subtopicCount' ? Number(value) : value 
     }));
   };
 
@@ -70,9 +69,16 @@ export default function Step1({ formData, setFormData, handleGenerateTopics, loa
           />
         </div>
 
-        <button type="submit" className="brand-btn btn-primary" disabled={loading}>
-          {loading ? t("btn_discovering") : t("btn_discover")}
-        </button>
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+          <button type="submit" className="brand-btn btn-primary" disabled={loading} style={{ flex: 1 }}>
+            {loading ? t("btn_discovering") : t("btn_discover")}
+          </button>
+          {loading && (
+            <button type="button" className="brand-btn btn-ghost" onClick={cancelGeneration} style={{ flex: 1 }}>
+              {t("btn_cancel") || "Cancel"}
+            </button>
+          )}
+        </div>
       </form>
     </div>
   );

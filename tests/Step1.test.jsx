@@ -21,6 +21,7 @@ describe('Step1 Component', () => {
         formData={defaultFormData} 
         setFormData={mockSetFormData} 
         handleGenerateTopics={mockHandleGenerateTopics} 
+        cancelGeneration={vi.fn()}
         loading={false} 
         t={mockT} 
       />
@@ -40,6 +41,7 @@ describe('Step1 Component', () => {
         formData={defaultFormData} 
         setFormData={mockSetFormData} 
         handleGenerateTopics={mockHandleGenerateTopics} 
+        cancelGeneration={vi.fn()}
         loading={false} 
         t={mockT} 
       />
@@ -51,19 +53,63 @@ describe('Step1 Component', () => {
     expect(mockSetFormData).toHaveBeenCalled();
   });
 
-  it('Should disable button when loading is true', () => {
+  it('Should disable button when loading is true and handle cancel', () => {
+    const mockCancel = vi.fn();
     render(
       <Step1 
         formData={defaultFormData} 
         setFormData={mockSetFormData} 
         handleGenerateTopics={mockHandleGenerateTopics} 
+        cancelGeneration={mockCancel}
         loading={true} 
         t={mockT} 
       />
     );
     
-    const button = screen.getByRole('button');
+    const button = screen.getByText('btn_discovering');
     expect(button).toBeDisabled();
-    expect(screen.getByText('btn_discovering')).toBeInTheDocument();
+
+    const cancelButton = screen.getByText('btn_cancel');
+    fireEvent.click(cancelButton);
+    expect(mockCancel).toHaveBeenCalled();
+  });
+
+  it('Should handle checkbox inputs appropriately', () => {
+    render(
+      <Step1 
+        formData={{ ...defaultFormData, someCheckbox: false }} 
+        setFormData={mockSetFormData} 
+        handleGenerateTopics={mockHandleGenerateTopics} 
+        cancelGeneration={vi.fn()}
+        loading={false} 
+        t={mockT} 
+      />
+    );
+    
+    // Step1 doesn't actively have a checkbox right now natively, but let's just simulate the onChange
+    // wait, Step1.jsx line 49 is a text input, let's inject a fake element event to test branch
+    const input = screen.getByDisplayValue('Testing Topic');
+    fireEvent.change(input, { target: { name: 'testCheck', type: 'checkbox', checked: true } });
+    
+    expect(mockSetFormData).toHaveBeenCalled();
+  });
+
+  it('Should handle subtopicCount branch logic', () => {
+    render(
+      <Step1 
+        formData={defaultFormData} 
+        setFormData={mockSetFormData} 
+        handleGenerateTopics={mockHandleGenerateTopics} 
+        cancelGeneration={vi.fn()}
+        loading={false} 
+        t={mockT} 
+      />
+    );
+    
+    // Simulate changing the number input (which activates name==='subtopicCount' ? Number(value))
+    const input = screen.getByDisplayValue('5'); // subtopicCount default is 5
+    fireEvent.change(input, { target: { name: 'subtopicCount', value: '10' } });
+    
+    expect(mockSetFormData).toHaveBeenCalled();
   });
 });

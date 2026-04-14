@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Exporter from "anki-apkg-export";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

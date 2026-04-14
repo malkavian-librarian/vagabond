@@ -10,6 +10,7 @@ export default function Step2({
   setFormData,
   setAvailableSubtopics, 
   loading,
+  cancelGeneration,
   generationStats,
   t 
 }) {
@@ -96,11 +97,16 @@ export default function Step2({
       </div>
 
       {loading && (
-        <div className="airbnb-progress-container">
-          <div 
-            className="airbnb-progress-fill" 
-            style={{ width: `${Math.max(5, (generationStats?.cards / wordsCount) * 100)}%` }}
-          />
+        <div style={{ marginBottom: '1rem' }}>
+          <div className="airbnb-progress-container" style={{ marginBottom: '1rem' }}>
+            <div 
+              className="airbnb-progress-fill" 
+              style={{ width: `${Math.max(5, (generationStats?.cards / wordsCount) * 100)}%` }}
+            />
+          </div>
+          <button type="button" className="brand-btn btn-ghost" onClick={cancelGeneration} style={{ width: '100%' }}>
+            {t("btn_cancel") || "Cancel"}
+          </button>
         </div>
       )}
 
