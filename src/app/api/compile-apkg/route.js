@@ -45,7 +45,7 @@ export async function POST(req) {
 
       const backText = `
         <div style="text-align:center; font-family: sans-serif; padding: 20px;">
-          <h2 style="font-size: 28px; color: #102A43;">${card.target}</h2>
+          <h2 style="font-size: 28px; color: #00B8D4;">${card.target}</h2>
           <br>
           ${hasImage ? `<img src="image_${i}.jpg" style="max-width: 100%; max-height: 250px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">` : ""}
           <br>

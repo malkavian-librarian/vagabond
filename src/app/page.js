@@ -1,11 +1,20 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
-import Step1, { EUROPEAN_LANGUAGES } from "@/components/generator/Step1";
-import Step2 from "@/components/generator/Step2";
-import Step3 from "@/components/generator/Step3";
-import Step4 from "@/components/generator/Step4";
+import Step1 from "@/components/generator/Step1";
 import { TRANSLATIONS } from "./locales";
+import { useGeneratorPipeline } from "@/hooks/useGeneratorPipeline";
+import dynamic from "next/dynamic";
+import "./history.css";
+
+const Step2 = dynamic(() => import("@/components/generator/Step2"), { ssr: false });
+const Step3Review = dynamic(() => import("@/components/generator/Step3Review"), { ssr: false });
+const Step4Media = dynamic(() => import("@/components/generator/Step4Media"), { ssr: false });
+const Step5Download = dynamic(() => import("@/components/generator/Step5Download"), { ssr: false });
+const HistoryView = dynamic(() => import("@/components/history/HistoryView"), { ssr: false });
+const ModelsView = dynamic(() => import("@/components/models/ModelsView"), { ssr: false });
+const ErrorsView = dynamic(() => import("@/components/errors/ErrorsView"), { ssr: false });
+import "./history.css";
 
 export default function Page() {
   const [step, setStep] = useState(1);
@@ -18,19 +27,59 @@ export default function Page() {
     topic: "",
     subtopicCount: 5,
     wordsPerSubtopic: 15,
+    preventDuplicates: true,
   });
 
   const [availableSubtopics, setAvailableSubtopics] = useState([]);
   const [selectedSubtopics, setSelectedSubtopics] = useState([]);
-  const [generationStats, setGenerationStats] = useState({ cards: 0, audio: 0, images: 0, tokens: 0 });
-  const [generatingProgress, setGeneratingProgress] = useState([]);
+  const [generatedWords, setGeneratedWords] = useState([]);
   const [downloadUrl, setDownloadUrl] = useState(null);
   const [dynamicTranslations, setDynamicTranslations] = useState({});
+  const [history, setHistory] = useState([]);
+  const [activeTab, setActiveTab] = useState("generator");
+  const [activeModel, setActiveModel] = useState("qwen/qwen-2.5-72b-instruct");
+  const [models, setModels] = useState([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem("vagabond_translations");
-    if (saved) setDynamicTranslations(JSON.parse(saved));
-  }, []);
+    const savedTranslations = localStorage.getItem("vagabond_translations");
+    if (savedTranslations) setDynamicTranslations(JSON.parse(savedTranslations));
+    
+    const fetchHistory = async () => {
+      try {
+        const res = await fetch("/api/history");
+        const data = await res.json();
+        if (Array.isArray(data)) setHistory(data);
+      } catch (e) {
+        console.error("Failed to fetch history", e);
+      }
+    };
+    fetchHistory();
+
+    const fetchModels = async () => {
+      try {
+        const res = await fetch("/api/models");
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setModels(data);
+          const savedModel = localStorage.getItem("vagabond_active_model");
+          if (savedModel && data.find(m => m.modelId === savedModel)) {
+            setActiveModel(savedModel);
+          } else {
+            setActiveModel(data[0].modelId);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch custom models", e);
+      }
+    };
+    fetchModels();
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeModel) {
+      localStorage.setItem("vagabond_active_model", activeModel);
+    }
+  }, [activeModel]);
 
   const t = React.useMemo(() => (key, params = {}) => {
     const lang = formData.nativeLanguage || "English";
@@ -82,88 +131,72 @@ export default function Page() {
     }
   }, []);
 
-  const handleGenerateTopics = async (e) => {
-    if (e) e.preventDefault();
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch("/api/generate-topics", {
-        method: "POST",
-        body: JSON.stringify(formData),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setAvailableSubtopics(data.subtopics);
-      setSelectedSubtopics(data.subtopics.slice(0, Number(formData.subtopicCount) || 5));
-      setStep(2);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const toggleSubtopic = (subtopic) => {
     setSelectedSubtopics(prev => prev.includes(subtopic) ? prev.filter(t => t !== subtopic) : [...prev, subtopic]);
   };
 
-  const handleGenerateDeck = async () => {
-    setStep(3);
-    setGeneratingProgress(selectedSubtopics.map(t => ({ topic: t, status: "pending" })));
-    setGenerationStats({ cards: 0, audio: 0, images: 0, tokens: 0 });
-    
-    const allCards = [];
-    const previouslyGeneratedWords = [];
+  const {
+    loading: hookLoading,
+    generationStats,
+    generatingProgress,
+    handleGenerateTopics,
+    handleGenerateWords,
+    handleGenerateMediaAndCompile
+  } = useGeneratorPipeline({
+    formData, activeModel, generatedWords, setGeneratedWords, 
+    selectedSubtopics, setAvailableSubtopics, setSelectedSubtopics, 
+    history, setHistory, setDownloadUrl, setStep, setError
+  });
 
+  const handleClearHistory = async () => {
     try {
-      for (let i = 0; i < selectedSubtopics.length; i++) {
-        const subtopic = selectedSubtopics[i];
-        setGeneratingProgress(prev => prev.map((item, idx) => idx === i ? { ...item, status: "active" } : item));
+      await fetch("/api/history", { method: "DELETE" });
+      setHistory([]);
+    } catch (e) {
+      console.error("Failed to clear history", e);
+    }
+  };
 
-        const res = await fetch("/api/generate-topic-cards", {
-          method: "POST",
-          body: JSON.stringify({
-            ...formData,
-            subtopic,
-            count: formData.wordsPerSubtopic,
-            previouslyGeneratedWords
-          }),
-        });
-
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
-
-        const subtopicCards = data.cards.map(c => ({ ...c, subtopic }));
-        allCards.push(...subtopicCards);
-        previouslyGeneratedWords.push(...subtopicCards.map(c => c.target));
-
-        setGenerationStats(prev => ({
-          cards: prev.cards + subtopicCards.length,
-          audio: prev.audio + data.audioGenerated,
-          images: prev.images + data.imagesGenerated,
-          tokens: prev.tokens + data.tokens
-        }));
-
-        setGeneratingProgress(prev => prev.map((item, idx) => idx === i ? { ...item, status: "done", generatedCards: subtopicCards } : item));
-      }
-
-      const compileRes = await fetch("/api/compile-apkg", {
-        method: "POST",
-        body: JSON.stringify({ topic: formData.topic, cards: allCards }),
+  const handleAddModel = async (modelId) => {
+    try {
+      await fetch("/api/models", { 
+        method: "POST", 
+        body: JSON.stringify({ modelId }) 
       });
+      setModels(prev => [...prev.filter(m => m.modelId !== modelId), { modelId, custom: true }]);
+    } catch (e) {
+      console.error("Failed to add model", e);
+    }
+  };
 
-      const blob = await compileRes.blob();
-      setDownloadUrl(URL.createObjectURL(blob));
-      setStep(4);
-    } catch (err) {
-      setError(err.message);
-      setStep(1);
+  const handleDeleteModel = async (modelId) => {
+    try {
+      await fetch("/api/models", { 
+        method: "DELETE", 
+        body: JSON.stringify({ modelId }) 
+      });
+      setModels(prev => {
+        const newModels = prev.filter(m => m.modelId !== modelId);
+        if (activeModel === modelId) {
+          setActiveModel(newModels.length > 0 ? newModels[0].modelId : "");
+        }
+        return newModels;
+      });
+    } catch (e) {
+      console.error("Failed to delete model", e);
     }
   };
 
   return (
     <div className="brand-layout">
-      <Navbar />
+      <Navbar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        activeModel={activeModel}
+        setActiveModel={setActiveModel}
+        allModels={models}
+        t={t} 
+      />
       <main className="container" style={{ position: 'relative' }}>
         {isTranslating && <div style={{ position: 'fixed', top: '100px', right: '20px', background: 'rgba(0, 184, 212, 0.1)', backdropFilter: 'blur(8px)', padding: '0.75rem 1.25rem', borderRadius: '12px', color: 'var(--brand-teal)', fontSize: '0.875rem', fontWeight: 'bold', zIndex: 100, border: '1px solid var(--brand-teal)', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div className="spinner-ring" style={{ width: '16px', height: '16px', borderTopColor: 'var(--brand-teal)' }}></div>
@@ -171,10 +204,32 @@ export default function Page() {
         </div>}
         {error && <div style={{ background: '#fee2e2', color: '#991b1b', padding: '1rem', borderRadius: '12px', marginBottom: '2rem', textAlign: 'center', fontWeight: '600' }}>{error}</div>}
         
-        {step === 1 && <Step1 formData={formData} setFormData={setFormData} handleGenerateTopics={handleGenerateTopics} loading={loading} t={t} />}
-        {step === 2 && <Step2 formData={formData} availableSubtopics={availableSubtopics} selectedSubtopics={selectedSubtopics} toggleSubtopic={toggleSubtopic} handleGenerateDeck={handleGenerateDeck} setFormData={setFormData} t={t} />}
-        {step === 3 && <Step3 generatingProgress={generatingProgress} setStep={setStep} setGeneratingProgress={setGeneratingProgress} t={t} nativeLanguage={formData.nativeLanguage} />}
-        {step === 4 && <Step4 generationStats={generationStats} downloadUrl={downloadUrl} formData={formData} setStep={setStep} setDownloadUrl={setDownloadUrl} t={t} />}
+        {activeTab === 'generator' && (
+          <>
+            {step === 1 && <Step1 formData={formData} setFormData={setFormData} handleGenerateTopics={handleGenerateTopics} loading={loading || hookLoading} t={t} />}
+            {step === 2 && <Step2 formData={formData} availableSubtopics={availableSubtopics} selectedSubtopics={selectedSubtopics} toggleSubtopic={toggleSubtopic} handleGenerateWords={handleGenerateWords} setFormData={setFormData} setAvailableSubtopics={setAvailableSubtopics} loading={loading || hookLoading} generationStats={generationStats} t={t} />}
+            {step === 3 && <Step3Review generatedWords={generatedWords} setGeneratedWords={setGeneratedWords} handleGenerateMediaAndCompile={handleGenerateMediaAndCompile} t={t} />}
+            {step === 4 && <Step4Media generatingProgress={generatingProgress} setStep={setStep} setGeneratingProgress={setGeneratingProgress} t={t} nativeLanguage={formData.nativeLanguage} />}
+            {step === 5 && <Step5Download generationStats={generationStats} downloadUrl={downloadUrl} formData={formData} setStep={setStep} setDownloadUrl={setDownloadUrl} t={t} />}
+          </>
+        )}
+        
+        {activeTab === 'history' && (
+          <HistoryView history={history} onClear={handleClearHistory} t={t} />
+        )}
+
+        {activeTab === 'models' && (
+          <ModelsView 
+            models={models} 
+            onAddModel={handleAddModel} 
+            onDeleteModel={handleDeleteModel} 
+            t={t} 
+          />
+        )}
+        
+        {activeTab === 'errors' && (
+          <ErrorsView t={t} />
+        )}
       </main>
     </div>
   );

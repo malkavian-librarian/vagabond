@@ -24,7 +24,7 @@ export async function OPTIONS() {
 
 export async function POST(req) {
   try {
-    const { nativeLanguage, targetLanguage, topic, subtopicCount } = await req.json();
+    const { nativeLanguage, targetLanguage, topic, subtopicCount, model } = await req.json();
 
     if (!topic || !nativeLanguage || !targetLanguage) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400, headers: corsHeaders });
@@ -45,7 +45,7 @@ Format exactly:
 }`;
 
     const completion = await openai.chat.completions.create({
-      model: "qwen/qwen-2.5-72b-instruct",
+      model: model || "qwen/qwen-2.5-72b-instruct",
       messages: [{ role: "user", content: prompt }], // FIX: Bug #1 - added messages
       response_format: { type: "json_object" },
     });

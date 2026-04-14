@@ -11,10 +11,11 @@ export const EUROPEAN_LANGUAGES = [
 
 export default function Step1({ formData, setFormData, handleGenerateTopics, loading, t }) {
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({ 
       ...prev, 
-      [name]: (name === 'subtopicCount' || name === 'wordsPerSubtopic') ? Number(value) : value 
+      [name]: type === 'checkbox' ? checked : 
+              (name === 'subtopicCount' || name === 'wordsPerSubtopic') ? Number(value) : value 
     }));
   };
 
@@ -55,16 +56,17 @@ export default function Step1({ formData, setFormData, handleGenerateTopics, loa
           />
         </div>
 
-        <div style={{ marginBottom: '2rem' }}>
-          <label>{t("label_subtopics")}: {formData.subtopicCount}</label>
+        <div style={{ marginBottom: '1.5rem' }}>
+          <label>{t("label_subtopics")}</label>
           <input
-            type="range"
+            type="number"
             name="subtopicCount"
-            min="3"
-            max="10"
-            step="1"
+            min="1"
+            max="100"
             value={formData.subtopicCount}
             onChange={handleChange}
+            style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--brand-border)', fontFamily: 'inherit', fontSize: '1rem', marginTop: '0.5rem' }}
+            required
           />
         </div>
 

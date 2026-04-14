@@ -93,7 +93,7 @@ export async function OPTIONS() {
 
 export async function POST(req) {
   try {
-    const { topic, subtopic, nativeLanguage, targetLanguage, count, previouslyGeneratedWords } = await req.json();
+    const { topic, subtopic, nativeLanguage, targetLanguage, count, previouslyGeneratedWords, model } = await req.json();
 
     if (!subtopic || !nativeLanguage || !targetLanguage || !count) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400, headers: corsHeaders });
@@ -116,7 +116,7 @@ Format exactly returning JSON:
 }`;
 
     const textCompletion = await openai.chat.completions.create({
-      model: "qwen/qwen-2.5-72b-instruct",
+      model: model || "qwen/qwen-2.5-72b-instruct",
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
     });

@@ -42,6 +42,9 @@ yarn-error.log*
 brain/
 *.log
 
+# data cache (history, api keys, metrics)
+data/*.json
+
 # vercel
 .vercel
 
