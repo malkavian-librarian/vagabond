@@ -1,4 +1,4 @@
-# Agent Execution Guide: Vagabond: Anki Card Local Generator v0.2.0
+# Agent Execution Guide: Vagabond: Anki Card Local Generator v0.2.0 (Next.js 16.2.4)
 
 ## Core Philosophy
 Vagabond is an AI-powered Anki deck generator built on bleeding-edge Next.js patterns. Ensure your code modifications reflect optimal UX dynamics, high security bounds, and test-driven deployment constraints.
@@ -28,7 +28,27 @@ Vagabond is an AI-powered Anki deck generator built on bleeding-edge Next.js pat
 - **Vitest Mocking**: Stub native browser APIs via UI integration suites or mock `fetch()` responses utilizing `@testing-library/react`.
 - **Pre-check Pipeline**: Ensure you verify branch metrics prior to merging modifications. Test suites failing below 80% signify incomplete deployment endpoints.
 
-## Security & Refactoring Audits
+## Security & Dependency Hygiene
+
+### Session-Start Dependabot Check (MANDATORY)
+At the start of every session, run:
+```
+gh api repos/malkavian-librarian/vagabond/dependabot/alerts --jq '[.[] | select(.state=="open")] | length'
+```
+If any open alerts exist, fetch and surface the details immediately:
+```
+gh api repos/malkavian-librarian/vagabond/dependabot/alerts --jq '[.[] | select(.state=="open")] | .[] | {id: .number, pkg: .dependency.package.name, severity: .security_advisory.severity, summary: .security_advisory.summary, patched_in: .security_vulnerability.first_patched_version.identifier}'
+```
+- Report all open alerts to the user at session start before any other work.
+- Re-surface unresolved alerts after each major task completion — do not silently drop them.
+- Mark an alert resolved only when `package-lock.json` confirms the patched version is installed AND the GitHub alert state is `"fixed"` or `"dismissed"`.
+
+### Known / Resolved Vulnerabilities
+| # | CVE / GHSA | Package | Severity | Summary | Status |
+|---|-----------|---------|----------|---------|--------|
+| 2 | CVE-2026-23869 / GHSA-q4gf-8mx6-v5v3 | `next` | High (7.5) | DoS via crafted requests to App Router Server Functions (RSC deserialization) | **Patched — upgraded to 16.2.4 on 2026-04-22** |
+
+### Refactoring Audits
 Review the application often and evaluate frontend best practices (e.g., dynamic splitting, memory footprint analysis) to keep Vagabond blazing fast structurally. Validate leakages continuously and secure unauthenticated API integrations!
 
 ## Documentation Maintenance & Session Logs
@@ -40,3 +60,4 @@ Review the application often and evaluate frontend best practices (e.g., dynamic
 - **2026-04-14 (Bugfix)**: Fixed ReferenceError in `page.js` by properly exporting and extracting `setGeneratingProgress` from the `useGeneratorPipeline` hook.
 - **2026-04-14 (Media Fix & Prompt AI)**: Resolved "Invalid Zip Archive" bug by throwing explicit internal Next.js responses. Mitigated OpenRouter rate-limiting missing constraints by implementing exponential backoff protocols. Developed dynamic prompt enhancement injecting Vagabond-themed prompt mutations structurally into the Gemini pipeline explicitly natively.
 - **2026-04-14 (Cancellation & Coverage bounds)**: Integrated dynamic global cancellation triggers via AbortController within the `useGeneratorPipeline` isolated architecture gracefully preserving partial APKG data configurations natively. Advanced global mapping bounds within vitest significantly breaking >90% minimum code coverage limits dynamically over backend and frontend hooks concurrently!
+- **2026-04-22 (Security patch)**: Upgraded `next` to 16.2.4 to patch CVE-2026-23869 (high-severity DoS). Added mandatory Dependabot session-start check workflow.

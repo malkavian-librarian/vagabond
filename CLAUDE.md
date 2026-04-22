@@ -1,14 +1,14 @@
 # Vagabond: Anki Card Local Generator Development Guide (v0.2.0)
 
 ## Build & Test Commands
-- `npm run dev`: Start development server (Next.js 16)
+- `npm run dev`: Start development server (Next.js 16.2.4)
 - `npm run build`: Production build
 - `npm run start`: Start production server
 - `npx vitest run --coverage`: Execute test coverage suite (Requires minimum 80% boundaries!)
 - `npm run lint`: Run ESLint
 
 ## Architecture
-- **Framework**: Next.js 16+ (App Router)
+- **Framework**: Next.js 16.2.4 (App Router)
 - **Lazy Loading**: Native React Component splitting via `next/dynamic` to shrink the initial JS payload footprint on client interactions dynamically.
 - **Testing Engine**: Vitest & React Testing Library simulating custom JSDOM DOM injection contexts.
 - **Styling**: Vanilla CSS. Absolutely no Tailwind permitted securely. All styles cascade cleanly in `globals.css` using CSS custom design tokens.
@@ -32,6 +32,26 @@
 - **Testing Gates**: A failure to deliver an 80%+ test suite coverage across modifications is unacceptable. Coverage configuration is in `vitest.config.js`.
 - **Card Logic Handling**: Front of Anki Card -> Native Language. Back of Anki Card -> Target Language. Audio matches the Back of the Anki card only!
 
+## Security & Dependency Hygiene
+
+### Session-Start Dependabot Check (MANDATORY)
+At the start of every session, run:
+```
+gh api repos/malkavian-librarian/vagabond/dependabot/alerts --jq '[.[] | select(.state=="open")] | length'
+```
+If any open alerts exist, fetch the details:
+```
+gh api repos/malkavian-librarian/vagabond/dependabot/alerts --jq '[.[] | select(.state=="open")] | .[] | {id: .number, pkg: .dependency.package.name, severity: .security_advisory.severity, summary: .security_advisory.summary, patched_in: .security_vulnerability.first_patched_version.identifier}'
+```
+- Surface all open alerts to the user immediately at session start.
+- Re-surface any unresolved alerts after completing each major task or feature until they are resolved — do not let them go quiet.
+- Do not dismiss an alert as resolved until the fix is confirmed in `package-lock.json` and the GitHub alert state is `"fixed"` or `"dismissed"`.
+
+### Known / Resolved Vulnerabilities
+| # | CVE / GHSA | Package | Severity | Summary | Status |
+|---|-----------|---------|----------|---------|--------|
+| 2 | CVE-2026-23869 / GHSA-q4gf-8mx6-v5v3 | `next` | High (7.5) | DoS via crafted requests to App Router Server Functions (RSC deserialization) | **Patched — upgraded to 16.2.4 on 2026-04-22** |
+
 ## Documentation Maintenance & Session Logs
 - **Self-Updating Blueprints**: For EVERY major change implemented, you MUST automatically update this file (`CLAUDE.md`), `AGENTS.md`, and `specification.md` to perfectly reflect the new architecture, refactoring ideas, and any documented bugs discovered.
 - **Session Excerpts (Pre-Push)**: Before executing ANY GitHub push, you MUST generate and save a short excerpt (summary) of the session directly into both `CLAUDE.md` and `AGENTS.md`.
@@ -41,3 +61,4 @@
 - **2026-04-14 (Bugfix)**: Fixed ReferenceError in `page.js` by properly exporting and extracting `setGeneratingProgress` from the `useGeneratorPipeline` hook.
 - **2026-04-14 (Media Fix & Prompt AI)**: Resolved "Invalid Zip Archive" bug by throwing explicit internal Next.js responses. Mitigated OpenRouter rate-limiting missing constraints by implementing exponential backoff protocols. Developed dynamic prompt enhancement injecting Vagabond-themed prompt mutations structurally into the Gemini pipeline explicitly natively.
 - **2026-04-14 (Cancellation & Coverage bounds)**: Integrated dynamic global cancellation triggers via AbortController within the `useGeneratorPipeline` isolated architecture gracefully preserving partial APKG data configurations natively. Advanced global mapping bounds within vitest significantly breaking >90% minimum code coverage limits dynamically over backend and frontend hooks concurrently!
+- **2026-04-22 (Security patch)**: Upgraded `next` from < 16.2.3 to 16.2.4 to patch CVE-2026-23869 (GHSA-q4gf-8mx6-v5v3) — high-severity DoS via App Router RSC deserialization. Added mandatory Dependabot session-start check to CLAUDE.md and AGENTS.md.
